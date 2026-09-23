@@ -14,6 +14,13 @@ jobs:
     name: Terraform Validate and Plan
     runs-on: ubuntu-latest
 
+    env:
+      TF_VAR_resource_group_name: "rg-sit722-week08"
+      TF_VAR_acr_name: "venurasit722w08acr"
+      TF_VAR_storage_account_name: "venurasit722w08storage"
+      TF_VAR_aks_cluster_name: "venura-sit722-aks08"
+      TF_VAR_aks_dns_prefix: "koalatech08"
+
     defaults:
       run:
         working-directory: terraform
