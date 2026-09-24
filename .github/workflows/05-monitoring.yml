@@ -1,0 +1,71 @@
+name: 05 - Validate Monitoring
+
+on:
+  workflow_run:
+    workflows:
+      - "04 - Deploy to Production"
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  validate-monitoring:
+    name: Validate Prometheus and Grafana
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ vars.AKS_RESOURCE_GROUP }} \
+            --name ${{ vars.AKS_CLUSTER_NAME }} \
+            --overwrite-existing
+
+      - name: Verify monitoring namespace
+        run: |
+          kubectl get namespace monitoring
+
+      - name: Verify monitoring pods
+        run: |
+          kubectl get pods -n monitoring
+
+      - name: Verify Prometheus is ready
+        run: |
+          kubectl wait \
+            --for=condition=Ready \
+            pod/prometheus-monitoring-kube-prometheus-prometheus-0 \
+            -n monitoring \
+            --timeout=120s
+
+      - name: Verify Grafana is available
+        run: |
+          kubectl wait \
+            --for=condition=Available \
+            deployment/monitoring-grafana \
+            -n monitoring \
+            --timeout=120s
+
+      - name: Verify monitoring services
+        run: |
+          kubectl get service \
+            monitoring-kube-prometheus-prometheus \
+            monitoring-grafana \
+            -n monitoring
+
+      - name: Show monitoring status
+        run: |
+          echo "Prometheus and Grafana monitoring validation completed successfully."
+          echo ""
+          echo "Monitoring pods:"
+          kubectl get pods -n monitoring
+          echo ""
+          echo "Monitoring services:"
+          kubectl get svc -n monitoring
